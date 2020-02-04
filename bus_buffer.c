@@ -22,53 +22,53 @@ void setupBuffer(tBufferData *ptrBufferData);
 //                             API Methods                                    //
 //----------------------------------------------------------------------------//
 void setupBusBuffer(tBufferPair *ptrBufferPair) {
-    setupBuffer(&(*ptrBufferPair).bufferRx);
-    setupBuffer(&(*ptrBufferPair).bufferTx);
+    setupBuffer(&ptrBufferPair->bufferRx);
+    setupBuffer(&ptrBufferPair->bufferTx);
 }
 
 void runRxTxStaging(tBufferPair *ptrBufferPair) {
-    runStaging(&(*ptrBufferPair).bufferRx);
-    runStaging(&(*ptrBufferPair).bufferTx);
+    runStaging(&ptrBufferPair->bufferRx);
+    runStaging(&ptrBufferPair->bufferTx);
 }
 
 void putByteRx(tBufferPair *ptrBufferPair, uint8_t byte, eBufferResponse *ptrStatus) {
-    putByte(byte, ptrStatus, &(*ptrBufferPair).bufferRx);
+    putByte(byte, ptrStatus, &(ptrBufferPair->bufferRx));
 }
 
 void putByteTx(tBufferPair *ptrBufferPair, uint8_t byte, eBufferResponse *ptrStatus) {
-    putByte(byte, ptrStatus, &(*ptrBufferPair).bufferTx);
+    putByte(byte, ptrStatus, &(ptrBufferPair->bufferTx));
 }
 
 uint8_t getByteRx(tBufferPair *ptrBufferPair, eBufferResponse *ptrStatus) {
-    return getByte(ptrStatus, &(*ptrBufferPair).bufferRx);
+    return getByte(ptrStatus, &(ptrBufferPair->bufferRx));
 }
 
 uint8_t getByteTx(tBufferPair *ptrBufferPair, eBufferResponse *ptrStatus) {
-    return getByte(ptrStatus, &(*ptrBufferPair).bufferTx);
+    return getByte(ptrStatus, &(ptrBufferPair->bufferTx));
 }
 
 uint8_t getRxDataByteCount(tBufferPair *ptrBufferPair) {
-    return (*ptrBufferPair).bufferRx.buffer.fillLevel;
+    return ptrBufferPair->bufferRx.buffer.fillLevel;
 }
 
 uint8_t getTxDataByteCount(tBufferPair *ptrBufferPair) {
-    return (*ptrBufferPair).bufferTx.buffer.fillLevel;
+    return ptrBufferPair->bufferTx.buffer.fillLevel;
 }
 
 uint8_t isRxStageFull(tBufferPair *ptrBufferPair){
-    return (*ptrBufferPair).bufferRx.flags.stagingFull;
+    return ptrBufferPair->bufferRx.flags.stagingFull;
 }
 
 uint8_t isTxStageFull(tBufferPair *ptrBufferPair) {
-    return (*ptrBufferPair).bufferTx.flags.stagingFull;
+    return ptrBufferPair->bufferTx.flags.stagingFull;
 }
 
 uint8_t isRxDataReadyToRead(tBufferPair *ptrBufferPair) {
-    return (*ptrBufferPair).bufferRx.buffer.fillLevel > 0 && !(*ptrBufferPair).bufferRx.flags.bufferLocked;
+    return ptrBufferPair->bufferRx.buffer.fillLevel > 0 && !ptrBufferPair->bufferRx.flags.bufferLocked;
 }
 
 uint8_t isTxDataReadyToRead(tBufferPair *ptrBufferPair) {
-    return (*ptrBufferPair).bufferTx.buffer.fillLevel > 0 && !(*ptrBufferPair).bufferTx.flags.bufferLocked;
+    return ptrBufferPair->bufferTx.buffer.fillLevel > 0 && !ptrBufferPair->bufferTx.flags.bufferLocked;
 }
 
 //----------------------------------------------------------------------------//
