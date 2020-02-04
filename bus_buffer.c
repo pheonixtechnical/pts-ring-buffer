@@ -135,13 +135,14 @@ void runStaging(tBufferData *ptrBufferData) {
     eBufferLoopState *ptrState = &(ptrBufferData->state);
     tBufferFlags *ptrFlags = &(ptrBufferData->flags);
     tRingBuffer *ptrBuffer = &(ptrBufferData->buffer);
+    uint8_t fillLevelWithStageData = 0;
     
     switch (*ptrState) {
         case BUFFER_NONE:
             *ptrState = BUFFER_WAIT_FOR_STAGE;
         case BUFFER_WAIT_FOR_STAGE:
             if(ptrBufferData -> stagingActivity > 0) {
-                (ptrBufferData -> stagingActivity)--;
+                ptrBufferData -> stagingActivity--;
                 break;
             }
             if(ptrBufferData -> stageWriteCount > 0) {
@@ -150,7 +151,8 @@ void runStaging(tBufferData *ptrBufferData) {
             break;
             
         case BUFFER_CHECK_FILL:
-            if((ptrBuffer -> fillLevel + ptrBufferData -> stageWriteCount) >= ptrBuffer -> size){
+            fillLevelWithStageData = ptrBuffer -> fillLevel + ptrBufferData -> stageWriteCount;
+            if(fillLevelWithStageData >= ptrBuffer -> size){
                 *ptrState = BUFFER_WAIT_FOR_STAGE;
                 break;
             }
