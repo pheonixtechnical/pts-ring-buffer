@@ -16,31 +16,18 @@ typedef struct {
     uint8_t data[BUFFER_SIZE];
 } tRingBuffer;
 
-typedef enum {
-    BUFFER_NONE,
-    BUFFER_WAIT_FOR_STAGE,
-    BUFFER_CHECK_FILL,
-    BUFFER_LOCK,
-    BUFFER_READ_FROM_STAGE,
-    BUFFER_MORE_IN_STAGE,
-    BUFFER_UNLOCK
-} eBufferLoopState;
-
 typedef union {
     struct {
-        unsigned stagingFull:1;
-        unsigned bufferLocked:1;       
+        unsigned bufferLocked:1;
+        unsigned stagingLocked:1;
     };
     uint8_t byte;
 } tBufferFlags;
 
 typedef struct {
     tRingBuffer buffer;
-    eBufferLoopState state;
-    tBufferFlags flags;
-    volatile uint8_t stage[MAX_STAGING_SIZE];
-    volatile uint8_t stageWriteCount;
-    volatile uint16_t stagingActivity;
+    tRingBuffer stagingBuffer;
+    volatile tBufferFlags flags;
     uint8_t stageReadCount; 
 } tBufferData;
 

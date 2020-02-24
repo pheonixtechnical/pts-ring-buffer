@@ -17,6 +17,8 @@ uint8_t getByte(eBufferResponse *ptrStatus, tBufferData *ptrBufferData);
 void putByte(uint8_t byte, eBufferResponse *ptrStatus, tBufferData *ptrBufferData);
 void runStaging(tBufferData *ptrBufferData);
 void setupBuffer(tBufferData *ptrBufferData);
+void bufferWrite(tRingBuffer *ptrBuffer, uint8_t byte);
+uint8_t bufferRead(tRingBuffer *ptrBuffer);
 
 //----------------------------------------------------------------------------//
 //                             API Methods                                    //
@@ -55,14 +57,6 @@ uint8_t getTxDataByteCount(tBufferPair *ptrBufferPair) {
     return ptrBufferPair->bufferTx.buffer.fillLevel;
 }
 
-uint8_t isRxStageFull(tBufferPair *ptrBufferPair){
-    return ptrBufferPair->bufferRx.flags.stagingFull;
-}
-
-uint8_t isTxStageFull(tBufferPair *ptrBufferPair) {
-    return ptrBufferPair->bufferTx.flags.stagingFull;
-}
-
 uint8_t isRxDataReadyToRead(tBufferPair *ptrBufferPair) {
     return ptrBufferPair->bufferRx.buffer.fillLevel > 0 && !ptrBufferPair->bufferRx.flags.bufferLocked;
 }
@@ -84,38 +78,64 @@ void setupBuffer(tBufferData *ptrBufferData) {
     ptrBuffer -> fillLevel = 0;
     ptrBufferData -> flags.byte = 0;
     ptrBuffer -> size = BUFFER_SIZE;
-    ptrBufferData -> state = BUFFER_NONE;
+    
+    ptrBuffer = &(ptrBufferData->stagingBuffer);
+    
+    ptrBuffer -> ptrStart = &(ptrBuffer -> data[0]);
+    ptrBuffer -> ptrEnd = &(ptrBuffer -> data[(BUFFER_SIZE - 1)]);
+    ptrBuffer -> ptrRead = ptrBuffer -> ptrStart;
+    ptrBuffer -> ptrWrite = ptrBuffer -> ptrStart;
+    ptrBuffer -> fillLevel = 0;
+    ptrBufferData -> flags.byte = 0;
+    ptrBuffer -> size = BUFFER_SIZE;
 }
 
 void putByte(uint8_t byte, eBufferResponse *ptrStatus, tBufferData *ptrBufferData) {
-    if(!ptrBufferData -> flags.stagingFull) {
-        uint8_t count = (ptrBufferData -> stageWriteCount)++;
-        ptrBufferData -> stage[count] = byte;
-        if(count >= (MAX_STAGING_SIZE - 1)) {
-            ptrBufferData -> flags.stagingFull = 1;
-        } else {
-            ptrBufferData -> stagingActivity = 20;
-        }
-        *ptrStatus = BUFFER_OPERATION_OK;
-    } else {
-        *ptrStatus = BUFFER_ERROR_FULL;
+    tRingBuffer *ptrBuffer = &(ptrBufferData->stagingBuffer);
+    
+    if(ptrBufferData -> flags.stagingLocked) {
+        *ptrStatus = BUFFER_ERROR_LOCKED;
+        return;
     }
+    
+    if(ptrBuffer -> fillLevel >= ptrBuffer -> size) {        
+        *ptrStatus = BUFFER_ERROR_FULL;
+        return;
+    }
+    
+    ptrBufferData -> flags.stagingLocked = 1;
+    
+    bufferWrite(ptrBuffer,byte);
+    
+    ptrBufferData -> flags.stagingLocked = 0;
+    
+    *ptrStatus = BUFFER_OPERATION_OK;
 }
 
 uint8_t getByte(eBufferResponse *ptrStatus, tBufferData *ptrBufferData) {
     tRingBuffer *ptrBuffer = &(ptrBufferData->buffer);
     tBufferFlags *ptrFlags = &(ptrBufferData->flags);
-    *ptrStatus = BUFFER_NONE;
+    *ptrStatus = BUFFER_OPERATION_NONE;
     
     if(ptrBuffer -> fillLevel == 0) {
         *ptrStatus = BUFFER_ERROR_EMPTY;
         return 0;
     }
-    if(ptrFlags -> bufferLocked) {
+    if(ptrFlags -> bufferLocked) {        
         *ptrStatus = BUFFER_ERROR_LOCKED;
         return 0;
     }
+    
     ptrFlags -> bufferLocked = 1;
+    uint8_t byte = bufferRead(ptrBuffer);
+    
+    ptrFlags -> bufferLocked = 0;
+    
+    *ptrStatus = BUFFER_OPERATION_OK;
+    return byte;
+}
+
+uint8_t bufferRead(tRingBuffer *ptrBuffer) {
     uint8_t byte = *(ptrBuffer -> ptrRead);
     
     ptrBuffer -> ptrRead++;
@@ -124,78 +144,32 @@ uint8_t getByte(eBufferResponse *ptrStatus, tBufferData *ptrBufferData) {
     if(ptrBuffer -> ptrRead > ptrBuffer -> ptrEnd) {
         ptrBuffer -> ptrRead = ptrBuffer -> ptrStart;
     }
-    
-    ptrFlags -> bufferLocked = 0;
-    
-    *ptrStatus = BUFFER_OPERATION_OK;
     return byte;
 }
 
+void bufferWrite(tRingBuffer *ptrBuffer, uint8_t byte) {
+    *(ptrBuffer -> ptrWrite) = byte;
+
+    ptrBuffer -> fillLevel++;
+    ptrBuffer -> ptrWrite++;
+
+    if(ptrBuffer -> ptrWrite > ptrBuffer -> ptrEnd) {
+    ptrBuffer -> ptrWrite = ptrBuffer -> ptrStart;
+    }
+}
+
 void runStaging(tBufferData *ptrBufferData) {
-    eBufferLoopState *ptrState = &(ptrBufferData->state);
-    tBufferFlags *ptrFlags = &(ptrBufferData->flags);
-    tRingBuffer *ptrBuffer = &(ptrBufferData->buffer);
-    uint8_t fillLevelWithStageData = 0;
-    
-    switch (*ptrState) {
-        case BUFFER_NONE:
-            *ptrState = BUFFER_WAIT_FOR_STAGE;
-        case BUFFER_WAIT_FOR_STAGE:
-            if(ptrBufferData -> stagingActivity > 0) {
-                ptrBufferData -> stagingActivity--;
-                break;
+    if(!ptrBufferData->flags.stagingLocked && !ptrBufferData -> flags.bufferLocked) {
+        tRingBuffer *ptrStagingBuffer = &(ptrBufferData->stagingBuffer);
+        tRingBuffer *ptrBuffer = &(ptrBufferData->buffer);
+        if(ptrStagingBuffer->fillLevel > 0) {
+            uint8_t byte = bufferRead(ptrStagingBuffer);
+
+            if(ptrBuffer -> fillLevel >= ptrBuffer -> size) {        
+                return;
             }
-            if(ptrBufferData -> stageWriteCount > 0) {
-                *ptrState = BUFFER_CHECK_FILL;
-            }
-            break;
-            
-        case BUFFER_CHECK_FILL:
-            fillLevelWithStageData = ptrBuffer -> fillLevel + ptrBufferData -> stageWriteCount;
-            if(fillLevelWithStageData >= ptrBuffer -> size){
-                *ptrState = BUFFER_WAIT_FOR_STAGE;
-                break;
-            }
-            *ptrState = BUFFER_LOCK;
-            break;
-            
-        case BUFFER_LOCK:
-            if(ptrFlags -> bufferLocked) {
-                break;
-            }
-            ptrFlags -> bufferLocked = 1;
-            ptrBufferData -> stageReadCount = 0;
-            *ptrState = BUFFER_READ_FROM_STAGE;
-            break;
-            
-        case BUFFER_READ_FROM_STAGE:
-            *(ptrBuffer -> ptrWrite) = ptrBufferData -> stage[ptrBufferData -> stageReadCount];
-            ptrBuffer -> fillLevel++;
-            ptrBuffer -> ptrWrite++;
-            
-            if(ptrBuffer -> ptrWrite > ptrBuffer -> ptrEnd) {
-                ptrBuffer -> ptrWrite = ptrBuffer -> ptrStart;
-            }
-            
-            ptrBufferData -> stage[ptrBufferData -> stageReadCount] = 0;
-            ptrBufferData -> stageReadCount++;
-            *ptrState = BUFFER_MORE_IN_STAGE;
-            break;
-            
-        case BUFFER_MORE_IN_STAGE:
-            if(ptrBufferData -> stageReadCount > ptrBufferData -> stageWriteCount) {
-                *ptrState = BUFFER_UNLOCK;
-            } else {
-                *ptrState = BUFFER_READ_FROM_STAGE;
-            }
-            break;
-            
-        case BUFFER_UNLOCK:
-            ptrBufferData-> stageReadCount = 0;
-            ptrBufferData-> stageWriteCount = 0;
-            ptrFlags -> stagingFull = 0;
-            ptrFlags -> bufferLocked = 0;
-            *ptrState = BUFFER_WAIT_FOR_STAGE;
-            break;
+
+            bufferWrite(ptrBuffer,byte);
+        }   
     }
 }
