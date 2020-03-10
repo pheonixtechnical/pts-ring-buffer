@@ -11,7 +11,8 @@ extern uint8_t getByteTx(tBufferPair *ptrBufferPair, eBufferResponse *ptrStatus)
 extern uint8_t getRxDataByteCount(tBufferPair *ptrBufferPair);
 extern uint8_t getTxDataByteCount(tBufferPair *ptrBufferPair);
 extern void setupBusBuffer(tBufferPair *ptrBufferPair);
-extern void runRxTxStaging(tBufferPair *ptrBufferPair);
+extern void runRxStaging(tBufferPair *ptrBufferPair);
+extern void runTxStaging(tBufferPair *ptrBufferPair);
 extern uint8_t isRxStageFull(tBufferPair *ptrBufferPair);
 extern uint8_t isTxStageFull(tBufferPair *ptrBufferPair);
 extern uint8_t isRxDataReadyToRead(tBufferPair *ptrBufferPair);

@@ -9,7 +9,8 @@ uint8_t getByteTx(tBufferPair *ptrBufferPair, eBufferResponse *ptrStatus);
 uint8_t getRxDataByteCount(tBufferPair *ptrBufferPair);
 uint8_t getTxDataByteCount(tBufferPair *ptrBufferPair);
 void setupBusBuffer(tBufferPair *ptrBufferPair);
-void runRxTxStaging(tBufferPair *ptrBufferPair);
+void runRxStaging(tBufferPair *ptrBufferPair);
+void runTxStaging(tBufferPair *ptrBufferPair);
 uint8_t isTxDataReadyToRead(tBufferPair *ptrBufferPair);
 
 //                             Common Methods                                 //
@@ -28,8 +29,11 @@ void setupBusBuffer(tBufferPair *ptrBufferPair) {
     setupBuffer(&ptrBufferPair->bufferTx);
 }
 
-void runRxTxStaging(tBufferPair *ptrBufferPair) {
+void runRxStaging(tBufferPair *ptrBufferPair) {
     runStaging(&ptrBufferPair->bufferRx);
+}
+
+void runTxStaging(tBufferPair *ptrBufferPair) {
     runStaging(&ptrBufferPair->bufferTx);
 }
 
@@ -163,9 +167,11 @@ void runStaging(tBufferData *ptrBufferData) {
         tRingBuffer *ptrStagingBuffer = &(ptrBufferData->stagingBuffer);
         tRingBuffer *ptrBuffer = &(ptrBufferData->buffer);
         if(ptrStagingBuffer->fillLevel > 0) {
+            ptrBufferData->flags.stagingLocked = 1;
             uint8_t byte = bufferRead(ptrStagingBuffer);
-
-            if(ptrBuffer -> fillLevel >= ptrBuffer -> size) {        
+            ptrBufferData->flags.stagingLocked = 0;
+            
+            if(ptrBuffer -> fillLevel >= ptrBuffer -> size) {   
                 return;
             }
 
