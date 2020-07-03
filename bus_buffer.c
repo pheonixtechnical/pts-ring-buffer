@@ -165,16 +165,17 @@ void bufferWrite(tRingBuffer *ptrBuffer, uint8_t byte) {
 void runStaging(tBufferData *ptrBufferData) {
     if(!ptrBufferData -> flags.stagingLocked && !ptrBufferData -> flags.bufferLocked) {
         tRingBuffer *ptrStagingBuffer = &(ptrBufferData->stagingBuffer);
-        tRingBuffer *ptrBuffer = &(ptrBufferData->buffer);
         if(ptrStagingBuffer -> fillLevel > 0) {
-            ptrBufferData -> flags.stagingLocked = 1;
-            uint8_t byte = bufferRead(ptrStagingBuffer);
-            ptrBufferData -> flags.stagingLocked = 0;
+            tRingBuffer *ptrBuffer = &(ptrBufferData->buffer);
             
             if(ptrBuffer -> fillLevel >= ptrBuffer -> size) {   
                 return;
             }
 
+            ptrBufferData -> flags.stagingLocked = 1;
+            uint8_t byte = bufferRead(ptrStagingBuffer);
+            ptrBufferData -> flags.stagingLocked = 0;
+            
             bufferWrite(ptrBuffer,byte);
         }   
     }
