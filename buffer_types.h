@@ -3,8 +3,8 @@
 
 #include <xc.h>
 
-#define BUFFER_SIZE 60
-#define MAX_STAGING_SIZE 30
+#define BUFFER_SIZE 150
+#define MAX_STAGING_SIZE 60
 
 typedef struct {
     uint8_t *ptrWrite;
